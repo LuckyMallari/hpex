@@ -1,0 +1,122 @@
+<style>
+  .hpex-main_{{rnd}}.mainView {
+    width: calc(100% - 2em);
+    height: calc(100% - 48px - 1em);
+    overflow: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 48px 1em 1em 1em;
+    text-align: left;
+    padding: 1em;
+  }
+  .hpex-main_{{rnd}}.noDisplay {
+    display: none;
+  }
+  
+  .hpex-main_{{rnd}}.mainView .tab-content {
+    padding: 1em;
+  }
+  
+  .hpex-main_{{rnd}} .mt-1 {
+    margin-top: 1em;
+  } 
+  
+  .hpex-main_{{rnd}} textarea,
+  .hpex-main_{{rnd}} input[type='text'],
+  .hpex-main_{{rnd}} input[type='number'] {
+    color: #000;
+  }
+
+  .hpex-main_{{rnd}} .w-10  {
+    width: 10em;
+  }
+</style>
+
+<!-- DRAWER -->
+<div class="hpex-main_{{rnd}}" ng-if="isDrawer()" ng-class="{'noDisplay': !config.isShowInDrawer}" ng-controller="HPExDrawerCtrl">
+  <span class="glyphicon glyphicon-wrench"></span> <span>{{header}}</span>
+</div>
+<!-- MAIN -->
+<div class="hpex-main_{{rnd}} scrollable box mainView" ng-if="!isDrawer()">
+
+  <div class="main-content">
+    <uib-tabset>
+      <uib-tab heading="General">
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" ng-model="config.isShowInDrawer" />
+            <span>Show in drawer</span>
+            <div>
+              <p>
+                If checked, a row in the dashboard is added. Otherwise, it is not included.
+                If you unchecked it, you can only access this settings page through the main <a href="#/">Dashboard
+                  Page</a>.
+              </p>
+            </div>
+          </label>
+        </div>
+      </uib-tab>
+
+      <uib-tab heading="Screen Saver">
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" ng-model="config.screensaver.isEnabled" />
+            <span>Enabled</span>
+          </label>
+        </div>
+        <div class="mt-1">
+          <label for="ss_idleTimeout">Idle Timeout: </label>
+          <div>
+            <input ng-disabled="!config.screensaver.isEnabled" class="form-control col-xs-3" type='number' id="ss_idleTimeout"
+              ng-model="config.screensaver.timeoutSeconds" required="true"></input>
+            <div>
+              <p>Seconds of being idle until screensaver kicks in</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-1">
+          <label for="ss_duration">Switching Time: </label>
+          <div>
+            <input ng-disabled="!config.screensaver.isEnabled" class="form-control col-xs-3" type='number' id="ss_duration"
+              ng-model="config.screensaver.durationSeconds" required="true"></input>
+            <div>
+              <p>Number of seconds per dashboard (before it switches to the next one)</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-1">
+          <label for="ss_dashboardIds">Dashboard List: </label>
+          <div>
+            <input ng-disabled="!config.screensaver.isEnabled" class="form-control" type='text' id="ss_dashboardIds"
+              ng-model="config.screensaver.dashboardList"></input>
+            <div>
+              <p>Comma (,) separated list of dashboards to rotate. (hint: you can put only 1 dashoard id). If this is
+                empty,
+                this will rotate <strong>ALL</strong> the dashboards. You can order it however you want, and even put
+                duplicates if you desire.</p>
+            </div>
+          </div>
+        </div>
+        <div class="mt-1">
+          <label>Available Panel IDs: </label>
+          <div>
+            <div>
+              <p>List of all possible Panel IDs.</p>
+            </div>
+            <textarea class="form-control" readonly="true">{{::availablePanelIds}}</textarea>
+          </div>
+        </div>
+      </uib-tab>
+    </uib-tabset>
+  </div>
+  <div class="action">
+    <button ng-click="saveConfig()" class="btn btn-primary">
+      <i class="glyphicon glyphicon-thumbs-up"></i>&nbsp;<span>Save</span>
+    </button>
+    <button ng-click="cancelConfig()" class="btn btn-danger pull-right">
+      <i class="glyphicon glyphicon-thumbs-down"></i>&nbsp;<span>Cancel</span>
+    </button>
+  </div>
+
+</div>

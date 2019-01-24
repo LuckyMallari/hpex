@@ -1,0 +1,7 @@
+{
+    "template": "<div oc-lazy-load=\"['/static/habpanelex/ctrl.js']\" id=\"HPEx_hopefully_unique_id\">\n  <div hab-panel-ex></div>\n</div>",
+    "name": "HPEx HabPanel Extension",
+    "author": "Lucky Mallari",
+    "description": "Extends HabPanel Functionality - See instructions from https://github.com/LuckyMallari/hpex",
+    "settings": []
+}
