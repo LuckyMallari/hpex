@@ -1,7 +1,7 @@
 # **H**ab**P**anel **Ex**tension
 Extending the functionality of HabPanel
+![](https://community-openhab-org.s3.dualstack.eu-central-1.amazonaws.com/original/3X/1/a/1afde63178322cd7104e9b6b440d1c11afa7e1db.png)
 
-### Work In Progress
 Join discussion at [OpenHAB Community](https://community.openhab.org/t/hpex-habpanel-extension/65122)
 
 ### Current Feature
@@ -24,7 +24,7 @@ Join discussion at [OpenHAB Community](https://community.openhab.org/t/hpex-habp
 9. Click on HabPanelEx from Drawer and Configure.
     ![image|324x500](https://community-openhab-org.s3.dualstack.eu-central-1.amazonaws.com/original/3X/d/1/d11f28a5145b682f05d9f80e41a4acbc39f217f9.png) 
 
-    ![image|321x500](https://community-openhab-org.s3.dualstack.eu-central-1.amazonaws.com/original/3X/e/e/ee3ba51100a187d25bb3fb585ed33813656abe15.png) 
+    ![image|321x500](https://community-openhab-org.s3.dualstack.eu-central-1.amazonaws.com/original/3X/1/a/1afde63178322cd7104e9b6b440d1c11afa7e1db.png) 
 
    
 #### TODO
