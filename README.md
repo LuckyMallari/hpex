@@ -12,10 +12,13 @@ Join discussion at [OpenHAB Community](https://community.openhab.org/t/hpex-habp
 ### Setup:
 1. Import this Widget from Widget Gallery of HabPanel
 2. Go to [HPEx in gitHub](https://github.com/LuckyMallari/hpex) and download 
-    a. Copy **habpanelex** folder to your html folder
+    a. Copy **habpanelex** folder to your OpenHAB's **conf/htm**l folder
 2. Go To Main Dashboard
 3. Add New Dashboard
 4. Name it HabPanelEx (**A MUST**)
+5. Go to that Panel (HabPanelEx)
+6. Add a widget and pick HabPanelEx
+7. Go back to main dashboard and edit
 5. Click Gear Icon (settings)
     ![image|412x207](https://community-openhab-org.s3.dualstack.eu-central-1.amazonaws.com/original/3X/0/0/006a6ebd65110278d8e6744d38d447f1a65b6d15.png) 
 6. Configure as shown on photo
