@@ -89,13 +89,13 @@
                 }
                 try {
                     c = c && c.result && JSON.parse(c.result);
-                } catch {
+                } catch (e) {
                     c = "{}"
                 }
                 c = c.state;
                 try {
                     c = JSON.parse(c);
-                } catch {
+                } catch (e) {
                     c = "{}";
                 }
                 if (c.initComplete) {
@@ -204,7 +204,7 @@
                 startIdleTimer();
             };
 
-            var idleHit = function() {
+            var idleHit = function () {
                 var interval = config.durationSeconds || 10;
                 timers.screenSaverTimer = $interval(next, interval * 1000);
             }
