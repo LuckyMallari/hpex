@@ -29,16 +29,42 @@
 */
 (function () {
     'use strict';
+
+    // Polyfills
+    (function hpexpolyfills() {
+        if (!Element.prototype.matches) {
+            Element.prototype.matches =
+                Element.prototype.matchesSelector ||
+                Element.prototype.mozMatchesSelector ||
+                Element.prototype.msMatchesSelector ||
+                Element.prototype.oMatchesSelector ||
+                Element.prototype.webkitMatchesSelector ||
+                function (s) {
+                    var matches = (this.document || this.ownerDocument).querySelectorAll(s),
+                        i = matches.length;
+                    while (--i >= 0 && matches.item(i) !== this) { }
+                    return i > -1;
+                };
+        }
+    })();
+
     var app = angular.module('app', []);
 
     app.constant('DEFAULTCONFIG', {
         "initComplete": true,
-        "isShowInDrawer": true,
+        "isShowInDrawer": false,
         "screensaver": {
             "isEnabled": true,
             "timeoutSeconds": 120,
             "dashboardList": "",
-            "durationSeconds": 10
+            "durationSeconds": 10,
+            "isFullScreen": true
+        },
+        "theaterMode": {
+            "isEnabled": true,
+            "isOn": false,
+            "color": "rgba(0,0,0,0.90)",
+            "triggeringItem": null
         }
     });
     app.service('HPExUtils', ['DEFAULTCONFIG',
@@ -115,26 +141,17 @@
                 return synchrounousRestCall('POST', id, configData, "text/plain");
             }
 
+            var getDom = function (d) {
+                return typeof (d) === "object" ? d : document.querySelector(d);
+            };
+
             serviceApi.hasParent = function (childSelector, parentSelector) {
-                var child = document.querySelector(childSelector);
-                var parent = document.querySelector(parentSelector);
-                return parent.contains(child);
-            }
+                return serviceApi.findParent(childSelector, parentSelector) !== null;
+            };
 
             serviceApi.findParent = function (childSelector, parentSelector) {
-                var child = document.querySelector(childSelector);
-                var origParent = document.querySelector(parentSelector);
-                if (!child)
-                    return false;
-                var parent = child.parentNode;
-                while (true) {
-                    if (parent == origParent)
-                        return parent;
-                    if (parent.tagName == "BODY") {
-                        return null;
-                    }
-                    parent = parent.parentNode;
-                }
+                var child = getDom(childSelector);
+                return child && child.closest(parentSelector);
             };
 
             var init = function () { log("Init!"); return true; };
@@ -147,8 +164,9 @@
 
     ]);
 
-    app.service('HPExService', ['$rootScope', '$location', 'OHService', 'HPExUtils',
-        function ($rootScope, $location, OHService, HPExUtils) {
+    app.service('HPExService', ['$rootScope', '$location', 'OHService', 'HPExUtils', '$compile',
+        function ($rootScope, $location, OHService, HPExUtils, $compile) {
+
             var logTag = 'HPExService';
             var serviceApi = {};
 
@@ -308,12 +326,22 @@
             };
 
             var showOrHide = function () {
-                var found = HPExUtils.findParent('.hpex-main_' + $scope.rnd, 'li');
-                found && (found.style.display = $scope.config.isShowInDrawer ? "block" : "none");
-            }
+
+                var found = HPExUtils.findParent('.hpex-drawer', 'li');
+
+                if (found) {
+                    if ($scope.config.isShowInDrawer) {
+                        found.style.display = "block";
+                        return;
+                    }
+                    found.style.display = "none";
+                }
+                return !!found;
+            };
 
             var onInit = function () {
                 log("Init");
+
                 $scope.config = HPExService.getConfig();
                 showOrHide();
             };
@@ -332,7 +360,7 @@
             var bucket = { modalInstance: null };
             serviceApi.open = function (title, message) {
                 bucket.modalInstance = $uibModal.open({
-                    templateUrl: '/static/habpanelex/tpl/modal.html',
+                    templateUrl: '/static/habpanelex/tpl/modal.html?lucky=' + Math.random().toString().substring(2, 7),
                     backdrop: 'static',
                     controller: function ($scope, $uibModalInstance) {
                         $scope.close = $uibModalInstance.close;
@@ -359,19 +387,23 @@
 
             $scope.availablePanelIds = HPExScrSaverService.getAvailablePanelIds();
 
-            $scope.rnd = Math.random().toString(36).substring(2);
+            $scope.instanceId = Math.random().toString(36).substring(2);
 
             $scope.isDrawer = function () {
-                var retVal = HPExUtils.hasParent('.hpex-main_' + $scope.rnd, '.drawer');
+                var retVal = HPExUtils.hasParent('.hpex-main_' + $scope.instanceId, '.drawer');
                 return retVal;
             };
 
             $scope.saveConfig = function () {
                 var r = HPExService.saveConfig($scope.config);
-                if (r.status === 201)
+                if (r.status === 201 || r.status === 200) {
                     $rootScope.$broadcast('HPExEvent.configChanged');
-                else
                     HPExModalService.open('Config', 'Saved');
+                }
+                else {
+                    HPExModalService.open('Config', 'Failed');
+                }
+
             }
 
             $scope.cancelConfig = function () {
@@ -395,11 +427,68 @@
         }
     ]);
 
+    app.service('HPExFSService', ['$rootScope', 'HPExService',
+        function ($rootScope, HPExService) {
+            var logTag = 'HPExFSService';
+            var serviceApi = {};
+            var config = {};
+
+            var onConfigChanged = function () {
+                config = HPExService.getConfig();
+            };
+
+            var log = function (s) { console.log(logTag + ": " + s); }
+
+            var onInit = function () {
+                config = HPExService.getConfig();
+                log("Init");
+            };
+
+            serviceApi.startTheaterMode = function () {
+                var el = document.getElementById('theaterModeMainEl');
+                el && (el.style.display = "block");
+            };
+
+            serviceApi.stopTheaterMode = function () {
+                var el = document.getElementById('theaterModeMainEl');
+                el && (el.style.display = "none");
+            };
+
+            serviceApi.toggleTheaterMode = function () {
+                var el = document.getElementById('theaterModeMainEl');
+                var d = el && el.style.display;
+                if (d) {
+                    el.style.display = el.style.display == "none" ? "block" : "none";
+                }
+            };
+
+            $rootScope.$on('HPExEvent.configChanged', onConfigChanged);
+            onInit();
+
+            return serviceApi;
+        }
+    ]);
+
+    app.controller('HPExTheaterCtrl', ['$scope', 'HPExFSService',
+        function ($scope, HPExFSService) {
+            $scope.on = function () {
+                HPExFSService.startTheaterMode();
+            };
+            $scope.off = function () {
+                HPExFSService.stopTheaterMode();
+            };
+            $scope.toggle = function () {
+                HPExFSService.toggleTheaterMode();
+            };
+        }
+    ]);
+
     app.directive('habPanelEx', function () {
         return {
-            templateUrl: '/static/habpanelex/tpl/main.html',
+            templateUrl: '/static/habpanelex/tpl/main.html?lucky=' + Math.random().toString().substring(2, 7),
             restrict: 'A',
-            controller: 'HPExCtrl'
+            controller: 'HPExCtrl',
+            scope: false
         };
     });
 })();
