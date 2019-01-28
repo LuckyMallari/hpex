@@ -30,10 +30,10 @@
 (function () {
     'use strict';
 
-    var head= document.getElementsByTagName('head')[0];
-    var script= document.createElement('script');
-    script.type= 'text/javascript';
-    script.src= '/static/habpanelex/polyfills.js';
+    var head = document.getElementsByTagName('head')[0];
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = '/static/habpanelex/polyfills.js';
     head.appendChild(script);
 
     var app = angular.module('app', []);
@@ -196,35 +196,38 @@
 
             var init = function () {
                 log("Init!");
-                injectDomComponents();
+                serviceApi.injectDomComponents.theaterComponents();
                 return true;
             };
 
-            var injectDomComponents = function () {
-                setTimeout(function () {
-                    var dom_toggleId = 'theaterModeButton_' + serviceApi.globalUuid;
-                    var HPExTheaterService = $injector.get('HPExTheaterService');
-                    if (!document.getElementById(dom_toggleId)) {
-                        var el = document.createElement("a");
-                        el.classList.add('btn');
-                        el.classList.add('pull-right');
-                        el.title = "Theater Mode";
-                        el.id = dom_toggleId;
-                        el.innerHTML = '<i class="glyphicon glyphicon-eye-close"></i>';
-                        HPExTheaterService && HPExUtils.insertDom(el, '.header', ['click'], HPExTheaterService.startTheaterMode, 2)
-                    }
-                    var dom_mainId = 'theaterModeMainEl_' + serviceApi.globalUuid
-                    if (!document.getElementById(dom_mainId)) {
-                        var el2 = document.createElement("div");
-                        el2.id = dom_mainId;
-                        HPExTheaterService && HPExUtils.insertDom(el2, 'body', ['click'], HPExTheaterService.stopTheaterMode);
-                    }
-                });
+            serviceApi.injectDomComponents = {
+                theaterComponents: function () {
+                    var inject = function () {
+                        var dom_toggleId = 'theaterModeButton_' + serviceApi.globalUuid;
+                        var HPExTheaterService = $injector.get('HPExTheaterService');
+                        var theaterTogglebutton = document.getElementById(dom_toggleId);
+                        if (!theaterTogglebutton) {
+                            var theaterTogglebutton = document.createElement("a");
+                            theaterTogglebutton.classList.add('btn');
+                            theaterTogglebutton.classList.add('pull-right');
+                            theaterTogglebutton.title = "Theater Mode";
+                            theaterTogglebutton.id = dom_toggleId;
+                            theaterTogglebutton.innerHTML = '<i class="glyphicon glyphicon-eye-close"></i>';
+                            HPExTheaterService && HPExUtils.insertDom(theaterTogglebutton, '.header', ['click'], HPExTheaterService.startTheaterMode, 2)
+                        }
+                        theaterTogglebutton && (theaterTogglebutton.style.display = HPExTheaterService.config.isEnabled ? "block" : "none");
+
+                        var dom_mainId = 'theaterModeMainEl_' + serviceApi.globalUuid
+                        if (!document.getElementById(dom_mainId)) {
+                            var el2 = document.createElement("div");
+                            el2.id = dom_mainId;
+                            HPExTheaterService && HPExUtils.insertDom(el2, 'body', ['click'], HPExTheaterService.stopTheaterMode);
+                        }
+                    };
+                    setTimeout(inject);
+                }
             }
 
-            $rootScope.$on("$routeChangeSuccess", function (event, next, current) {
-                injectDomComponents();
-            });
 
             serviceApi.init = init();
             return serviceApi;
@@ -342,6 +345,7 @@
             var onConfigChanged = function () {
                 initConfig();
                 ssMain();
+                HPExService.injectDomComponents.theaterComponents();
             };
 
             var onInit = function () {
@@ -349,6 +353,10 @@
                 ssMain();
                 log("Init");
             };
+
+            $rootScope.$on("$routeChangeSuccess", function (event, next, current) {
+                HPExService.injectDomComponents.theaterComponents();
+            });
 
             $rootScope.$on('HPExEvent.configChanged', onConfigChanged);
             onInit();
@@ -497,6 +505,8 @@
             };
 
             serviceApi.startTheaterMode = function () {
+                if (!serviceApi.config.isEnabled)
+                    return;
                 var el = document.getElementById('theaterModeMainEl_' + HPExService.globalUuid);
                 if (!el) {
                     commandON();
@@ -511,6 +521,8 @@
             };
 
             serviceApi.stopTheaterMode = function () {
+                if (!serviceApi.config.isEnabled)
+                    return;
                 var el = document.getElementById('theaterModeMainEl_' + HPExService.globalUuid);
                 if (!el) {
                     commandOFF();
@@ -526,6 +538,8 @@
 
             $rootScope.$on('HPExEvent.configChanged', onConfigChanged);
             $rootScope.$on('openhab-update', function (event, item) {
+                if (!serviceApi.config.isEnabled)
+                    return;
                 if (serviceApi.config.triggeringItem
                     && item
                     && item.name == serviceApi.config.triggeringItem
