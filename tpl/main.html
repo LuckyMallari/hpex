@@ -80,6 +80,9 @@
     padding: 0 !important;
     margin: 0 !important;
   }
+  .hpex-main_{{instanceId}} input[disabled] {
+    background: rgba(170,170,170)
+  }
 </style>
 
 <!-- DRAWER -->
@@ -104,14 +107,15 @@
 
     <!-- GENERAL -->
     <uib-tabset>
-      <uib-tab heading="General">
+      <uib-tab heading="General" select="setactiveTab('General')">
         <div class="checkbox">
           <label>
             <input type="checkbox" ng-model="config.isShowInDrawer" />
             <span>Show in drawer</span>
             <div>
               <p class="mt-1">
-                <span class="glyphicon glyphicon-info-sign"></span>&nbsp;If checked, a row in the dashboard is added. Otherwise, it is not included.
+                <span class="glyphicon glyphicon-info-sign"></span>&nbsp;If checked, a row in the dashboard is added.
+                Otherwise, it is not included.
                 If you unchecked it, you can only access this settings page through the main <a href="#/">Dashboard
                   Page</a>.
               </p>
@@ -121,7 +125,7 @@
       </uib-tab>
 
       <!-- SCREEN -->
-      <uib-tab heading="Screen">
+      <uib-tab heading="Screen" select="setactiveTab('Screen.ScreenSaver')">
         <uib-tabset>
           <!-- SCREEN SAVER  -->
           <uib-tab heading="Screen Saver">
@@ -139,7 +143,8 @@
                 <input type="checkbox" ng-model="config.screensaver.isFullScreen" ng-disabled="!config.screensaver.isEnabled" />
                 <span>FullScreen</span>
                 <div>
-                  <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;When enabled, the screen saver will enter
+                  <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;When enabled, the screen
+                    saver will enter
                     in full screen mode, which will hide both the drawer and the header.</p>
                 </div>
               </label>
@@ -171,7 +176,8 @@
                 <input ng-disabled="!config.screensaver.isEnabled" class="form-control" type='text' id="ss_dashboardIds"
                   ng-model="config.screensaver.dashboardList"></input>
                 <div>
-                  <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Comma (,) separated list of dashboards to rotate. (hint: you can put only 1 dashoard id). If
+                  <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Comma (,) separated list of
+                    dashboards to rotate. (hint: you can put only 1 dashoard id). If
                     this is
                     empty,
                     this will rotate <strong>ALL</strong> the dashboards. You can order it however you want, and even
@@ -192,7 +198,8 @@
           </uib-tab>
 
           <!-- THEATER MODE -->
-          <uib-tab heading="Theater Mode" ng-init="config.theaterMode.color = config.theaterMode.color || 'rgba(0,0,0,0.90)'">
+          <uib-tab heading="Theater Mode" ng-init="config.theaterMode.color = config.theaterMode.color || 'rgba(0,0,0,0.90)'"
+            select="setactiveTab('Screen.TheaterMode')">
             <p class="italics">
               <span class="glyphicon glyphicon-info-sign"></span>&nbsp;Theater mode changes the screen brightness/color
             </p>
@@ -221,9 +228,9 @@
                 <div class="col-xs-8">
                   <item-picker id="tm_triggering_item" ng-model="config.theaterMode.triggeringItem" filter-type="Switch"></item-picker>
                   <div>
-                    <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;When this <strong>Switch</strong> item receives an <span class="text-success">ON</span>/<span
-                        class="text-danger">OFF</span> command, the theater mode will turn <span class="text-success">ON</span>/<span
-                        class="text-danger">OFF</span>.
+                    <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;When this <strong>Switch</strong>
+                      item receives an <span class="text-success">ON</span>/<span class="text-danger">OFF</span>
+                      command, the theater mode will turn <span class="text-success">ON</span>/<span class="text-danger">OFF</span>.
                     </p>
                   </div>
                 </div>
@@ -241,15 +248,44 @@
       </uib-tab>
 
       <!-- ADVANCED -->
-      <uib-tab class="pull-right" heading="Advanced">
+      <uib-tab class="pull-right" heading="Advanced" select="setActiveTab('Advanced')">
         <div>
           <h4>Raw Config</h4>
+          <p>Configuration is saved to a <strong>String Item</strong> <em>{{::panelConfigItem}}</em></p>
           <textarea class="wp-100 h-25" readonly>{{config|json}}</textarea>
+        </div>
+        <div class="mt-1">
+          <label for="panelConfigItem">String Item</label>
+          <div>
+            <input class="form-control" type='text' id="panelConfigItem" ng-model="panelConfigItem" ng-disabled="isAccepted!=='I understood'"></input>
+            <div>
+              <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;
+                Change config item. When you change this to an existing String item,
+                HabPanelEx will attempt to load that configuration. If the item <strong>DOES NOT</strong> exist,
+                HabPanelEx will create one. Be careful. If the String Item exists, it's value/state will be overriden.
+                <br />
+                This allows you to have different configurations per device. You can also share configuration between
+                devices. You just have
+                to know the configuration String Item name. The String Item name is saved onto your browser's
+                localStorage.
+              </p>
+              <input class="form-control mt-2" type="text" placeholder="Type 'I understood' here to edit the string item above"
+                ng-model="isAccepted">
+            </div>
+          </div>
+        </div>
+        <div class="action mt-2" ng-if="isAccepted=='I understood'">
+          <button ng-click="saveNewConfig(panelConfigItem)" class="btn btn-primary">
+            <i class="glyphicon glyphicon-thumbs-up"></i>&nbsp;<span>Save</span>
+          </button>
+          <button ng-click="cancelNewConfig()" class="btn btn-danger pull-right">
+            <i class="glyphicon glyphicon-thumbs-down"></i>&nbsp;<span>Cancel</span>
+          </button>
         </div>
       </uib-tab>
     </uib-tabset>
   </div>
-  <div class="action">
+  <div class="action" ng-if="activeTab!='Advanced'">
     <button ng-click="saveConfig()" class="btn btn-primary">
       <i class="glyphicon glyphicon-thumbs-up"></i>&nbsp;<span>Save</span>
     </button>
