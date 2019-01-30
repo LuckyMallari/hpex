@@ -39,6 +39,7 @@
     var app = angular.module('app', []);
 
     app.constant('DEFAULTCONFIG', {
+        "config_item": "habpanelExConfig",
         "initComplete": true,
         "isShowInDrawer": true,
         "screensaver": {
@@ -86,18 +87,23 @@
                 };
             }
 
+            serviceApi.createItem = function (id) {
+                var data = {
+                    "type": "String",
+                    "name": id,
+                    "label": "HPEx Config for " + id
+                };
+
+                return synchrounousRestCall('PUT', id, data);
+            }
+
             serviceApi.getConfig = function (id) {
                 var c = synchrounousRestCall('GET', id);
                 if (c == null || c.status !== 200) {
                     // Config does not exist. Create an item for it.
                     log("Config item does not exist. Creating one..")
-                    var data = {
-                        "type": "String",
-                        "name": id,
-                        "label": "HPEx Config for " + id
-                    };
+                    serviceApi.createItem(id);
 
-                    var d = synchrounousRestCall('PUT', id, data);
                     // Then retrieve it
                     c = synchrounousRestCall('GET', id);
                 }
@@ -156,8 +162,20 @@
                 else
                     to.appendChild(elToInsert);
             }
+
+            serviceApi.localStorageId = {
+                get: function () {
+                    var id = localStorage && localStorage.getItem('habpanelex_panel_id');
+                    return id || 'habpanelExConfig';
+                },
+                set: function (id) {
+                    id && localStorage && localStorage.setItem('habpanelex_panel_id', id);
+                }
+            };
+
             var init = function () { log("Init!"); return true; };
 
+            serviceApi.synchrounousRestCall = synchrounousRestCall;
             serviceApi.init = init();
 
             return serviceApi;
@@ -173,24 +191,27 @@
             var serviceApi = {};
 
             var log = function (s) { console.log(logTag + ": " + s); }
-            var protectedConfigData = HPExUtils.getConfig("habpanelExConfig");
+
+            serviceApi.panelConfigItem = HPExUtils.localStorageId.get();
+
+            var protectedConfigData = HPExUtils.getConfig(serviceApi.panelConfigItem);
 
             serviceApi.goToDashboard = function (name) {
                 $location.url('/view/' + name);
             };
 
-            serviceApi.saveConfig = function (newConfig) {
+            serviceApi.saveConfig = function (newConfig, id) {
+                id = id || serviceApi.panelConfigItem;
                 protectedConfigData = newConfig;
-                return HPExUtils.saveConfig("habpanelExConfig", newConfig);
+                newConfig.panelConfigItem = id;
+                serviceApi.panelConfigItem = id;
+                HPExUtils.localStorageId.set(id);
+                return HPExUtils.saveConfig(id, newConfig);
             };
 
             serviceApi.getConfig = function () {
                 return angular.copy(protectedConfigData);
             }
-
-            serviceApi.toast = function (message) {
-
-            };
 
             serviceApi.globalUuid = Math.random().toString(36).substring(2);
 
@@ -407,14 +428,20 @@
             var serviceApi = {};
 
             var bucket = { modalInstance: null };
-            serviceApi.open = function (title, message) {
+            serviceApi.open = function (title, message, okText, cancelText, onOk, onCancel) {
                 bucket.modalInstance = $uibModal.open({
                     templateUrl: '/static/habpanelex/tpl/modal.html?lucky=' + Math.random().toString().substring(2, 7),
                     backdrop: 'static',
                     controller: function ($scope, $uibModalInstance) {
-                        $scope.close = $uibModalInstance.close;
                         $scope.title = title;
                         $scope.message = message;
+                        if (typeof (okText) !== "boolean") {
+                            $scope.okText = okText || "OK";
+                            $scope.cancelText = cancelText;
+                            $scope.onOk = onOk || serviceApi.close;
+                            $scope.onCancel = onCancel;
+                        }
+
                     }
                 })
             };
@@ -429,14 +456,16 @@
     /*
         Main Settings Controller
     */
-    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService', 'HPExTheaterService',
-        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService, HPExTheaterService) {
+    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService', '$location',
+        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService, $location) {
             var logTag = 'HPExCtrl';
             $scope.header = "HPEx";
 
             $scope.availablePanelIds = HPExScrSaverService.getAvailablePanelIds();
-
+            $scope.activeTab = "General";
             $scope.instanceId = Math.random().toString(36).substring(2);
+            $scope.globalUuid = HPExService.globalUuid;
+            $scope.panelConfigItem = HPExService.panelConfigItem;
 
             $scope.isDrawer = function () {
                 var retVal = HPExUtils.hasParent('.hpex-main_' + $scope.instanceId, '.drawer');
@@ -452,7 +481,6 @@
                 else {
                     HPExModalService.open('Config', 'Failed');
                 }
-
             }
 
             $scope.cancelConfig = function () {
@@ -460,7 +488,50 @@
                 HPExModalService.open('Config', 'Canceled');
             }
 
-            $scope.globalUuid = HPExService.globalUuid;
+            $scope.setActiveTab = function (t) {
+                $scope.activeTab = t;
+            }
+
+            var onSaveNewConfig = function (statusCode) {
+                if (statusCode == 200) {
+                    HPExModalService.open("New Configuration", "Saved. Please manually refresh the page to reload configuration.", true);
+                } else {
+                    HPExModalService.open("New Configuration", "Failed. Please manually refresh the page to reload  configuration", true);
+                }
+            }
+
+            $scope.saveNewConfig = function (id) {
+                // Check if exists:
+                var r = HPExUtils.synchrounousRestCall("GET", id);
+                if (r.status == 200) {
+
+                    var onOk = function () {
+                        r = HPExService.saveConfig($scope.config, id);
+                        HPExModalService.close();
+                        onSaveNewConfig(r.status);
+                    }
+
+                    HPExModalService.open('Item Exists', "String item " + id + " exists. Override?", "Yes", "No", onOk, HPExModalService.close);
+
+                } else if (r.status == 404) {
+                    var onOk = function () {
+                        r = HPExUtils.createItem(id);
+                        if (r.status == 201) {
+                            r = HPExService.saveConfig($scope.config, id);
+                            HPExModalService.close();
+                            onSaveNewConfig(r.status);
+                        } else {
+                            HPExModalService.close();
+                            HPExModalService.open('New Item', "New Item Failed. Please check console logs");
+                        }
+                    }
+                    HPExModalService.open('New Item', "String item " + id + " does <strong>NOT</strong> exist. Override?", "Yes", "No", onOk, HPExModalService.close);
+                }
+            }
+
+            $scope.cancelNewConfig = function () {
+                $location.url('/');
+            }
 
             var log = function (s) { console.log(logTag + ": " + s); }
 
