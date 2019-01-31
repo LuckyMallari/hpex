@@ -30,29 +30,18 @@
 (function () {
     'use strict';
 
-    // Polyfills
-    (function hpexpolyfills() {
-        if (!Element.prototype.matches) {
-            Element.prototype.matches =
-                Element.prototype.matchesSelector ||
-                Element.prototype.mozMatchesSelector ||
-                Element.prototype.msMatchesSelector ||
-                Element.prototype.oMatchesSelector ||
-                Element.prototype.webkitMatchesSelector ||
-                function (s) {
-                    var matches = (this.document || this.ownerDocument).querySelectorAll(s),
-                        i = matches.length;
-                    while (--i >= 0 && matches.item(i) !== this) { }
-                    return i > -1;
-                };
-        }
-    })();
+    var head = document.getElementsByTagName('head')[0];
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = '/static/habpanelex/polyfills.js';
+    head.appendChild(script);
 
     var app = angular.module('app', []);
 
     app.constant('DEFAULTCONFIG', {
+        "config_item": "habpanelExConfig",
         "initComplete": true,
-        "isShowInDrawer": false,
+        "isShowInDrawer": true,
         "screensaver": {
             "isEnabled": true,
             "timeoutSeconds": 120,
@@ -98,18 +87,23 @@
                 };
             }
 
+            serviceApi.createItem = function (id) {
+                var data = {
+                    "type": "String",
+                    "name": id,
+                    "label": "HPEx Config for " + id
+                };
+
+                return synchrounousRestCall('PUT', id, data);
+            }
+
             serviceApi.getConfig = function (id) {
                 var c = synchrounousRestCall('GET', id);
                 if (c == null || c.status !== 200) {
                     // Config does not exist. Create an item for it.
                     log("Config item does not exist. Creating one..")
-                    var data = {
-                        "type": "String",
-                        "name": id,
-                        "label": "HPEx Config for " + id
-                    };
+                    serviceApi.createItem(id);
 
-                    var d = synchrounousRestCall('PUT', id, data);
                     // Then retrieve it
                     c = synchrounousRestCall('GET', id);
                 }
@@ -154,8 +148,34 @@
                 return child && child.closest(parentSelector);
             };
 
+            serviceApi.insertDom = function (elToInsert, elToInsertTo, events, callback, position) {
+                var to = document.querySelector(elToInsertTo);
+                if (!to || !elToInsert)
+                    return;
+                if (Array.isArray(events))
+                    events = [events];
+                for (var i = 0; i < events.length; i++) {
+                    elToInsert.addEventListener(events[i], callback);
+                }
+                if (position && to.children.length >= position)
+                    to.insertBefore(elToInsert, to.children[position]);
+                else
+                    to.appendChild(elToInsert);
+            }
+
+            serviceApi.localStorageId = {
+                get: function () {
+                    var id = localStorage && localStorage.getItem('habpanelex_panel_id');
+                    return id || 'habpanelExConfig';
+                },
+                set: function (id) {
+                    id && localStorage && localStorage.setItem('habpanelex_panel_id', id);
+                }
+            };
+
             var init = function () { log("Init!"); return true; };
 
+            serviceApi.synchrounousRestCall = synchrounousRestCall;
             serviceApi.init = init();
 
             return serviceApi;
@@ -164,38 +184,73 @@
 
     ]);
 
-    app.service('HPExService', ['$rootScope', '$location', 'OHService', 'HPExUtils', '$compile',
-        function ($rootScope, $location, OHService, HPExUtils, $compile) {
+    app.service('HPExService', ['$rootScope', '$location', 'OHService', 'HPExUtils', '$injector',
+        function ($rootScope, $location, OHService, HPExUtils, $injector) {
 
             var logTag = 'HPExService';
             var serviceApi = {};
 
             var log = function (s) { console.log(logTag + ": " + s); }
-            var protectedConfigData = HPExUtils.getConfig("habpanelExConfig");
+
+            serviceApi.panelConfigItem = HPExUtils.localStorageId.get();
+
+            var protectedConfigData = HPExUtils.getConfig(serviceApi.panelConfigItem);
 
             serviceApi.goToDashboard = function (name) {
                 $location.url('/view/' + name);
             };
 
-            serviceApi.saveConfig = function (newConfig) {
+            serviceApi.saveConfig = function (newConfig, id) {
+                id = id || serviceApi.panelConfigItem;
                 protectedConfigData = newConfig;
-                return HPExUtils.saveConfig("habpanelExConfig", newConfig);
+                newConfig.panelConfigItem = id;
+                serviceApi.panelConfigItem = id;
+                HPExUtils.localStorageId.set(id);
+                return HPExUtils.saveConfig(id, newConfig);
             };
 
             serviceApi.getConfig = function () {
                 return angular.copy(protectedConfigData);
             }
 
-            serviceApi.toast = function (message) {
-
-            };
+            serviceApi.globalUuid = Math.random().toString(36).substring(2);
 
             var init = function () {
                 log("Init!");
+                serviceApi.injectDomComponents.theaterComponents();
                 return true;
             };
 
-            serviceApi.init = init(); 1
+            serviceApi.injectDomComponents = {
+                theaterComponents: function () {
+                    var inject = function () {
+                        var dom_toggleId = 'theaterModeButton_' + serviceApi.globalUuid;
+                        var HPExTheaterService = $injector.get('HPExTheaterService');
+                        var theaterTogglebutton = document.getElementById(dom_toggleId);
+                        if (!theaterTogglebutton) {
+                            var theaterTogglebutton = document.createElement("a");
+                            theaterTogglebutton.classList.add('btn');
+                            theaterTogglebutton.classList.add('pull-right');
+                            theaterTogglebutton.title = "Theater Mode";
+                            theaterTogglebutton.id = dom_toggleId;
+                            theaterTogglebutton.innerHTML = '<i class="glyphicon glyphicon-eye-close"></i>';
+                            HPExTheaterService && HPExUtils.insertDom(theaterTogglebutton, '.header', ['click'], HPExTheaterService.startTheaterMode, 2)
+                        }
+                        theaterTogglebutton && (theaterTogglebutton.style.display = HPExTheaterService.config.isEnabled ? "block" : "none");
+
+                        var dom_mainId = 'theaterModeMainEl_' + serviceApi.globalUuid
+                        if (!document.getElementById(dom_mainId)) {
+                            var el2 = document.createElement("div");
+                            el2.id = dom_mainId;
+                            HPExTheaterService && HPExUtils.insertDom(el2, 'body', ['click'], HPExTheaterService.stopTheaterMode);
+                        }
+                    };
+                    setTimeout(inject);
+                }
+            }
+
+
+            serviceApi.init = init();
             return serviceApi;
         }
     ]);
@@ -224,6 +279,7 @@
 
             var idleHit = function () {
                 var interval = config.durationSeconds || 10;
+                next();
                 timers.screenSaverTimer = $interval(next, interval * 1000);
             }
 
@@ -234,6 +290,12 @@
                     currentIndex = 0;
                 else
                     currentIndex++;
+
+                if (config.isFullScreen) {
+                    setTimeout(function () {
+                        document.querySelector('main').classList.add('hideMainHideDrawer_' + HPExService.globalUuid);
+                    });
+                };
             };
 
             var startIdleTimer = function () {
@@ -242,6 +304,9 @@
             };
 
             var stopIdleTimer = function () {
+                if (config.isFullScreen) {
+                    document.querySelector('main').classList.remove('hideMainHideDrawer_' + HPExService.globalUuid);
+                };
                 $timeout.cancel(timers.idleTimer);
                 $interval.cancel(timers.screenSaverTimer);
                 timers.idleTime = null;
@@ -301,6 +366,7 @@
             var onConfigChanged = function () {
                 initConfig();
                 ssMain();
+                HPExService.injectDomComponents.theaterComponents();
             };
 
             var onInit = function () {
@@ -309,6 +375,10 @@
                 log("Init");
             };
 
+            $rootScope.$on("$routeChangeSuccess", function (event, next, current) {
+                HPExService.injectDomComponents.theaterComponents();
+            });
+
             $rootScope.$on('HPExEvent.configChanged', onConfigChanged);
             onInit();
 
@@ -316,8 +386,8 @@
         }
     ]);
 
-    app.controller('HPExDrawerCtrl', ['$scope', 'HPExService', '$rootScope', 'HPExUtils', 'HPExScrSaverService',
-        function ($scope, HPExService, $rootScope, HPExUtils, HPExScrSaverService) {
+    app.controller('HPExDrawerCtrl', ['$scope', 'HPExService', '$rootScope', 'HPExUtils', 'HPExScrSaverService', 'HPExTheaterService',
+        function ($scope, HPExService, $rootScope, HPExUtils, HPExScrSaverService, HPExTheaterService) {
             var logTag = 'HPExDrawerCtrl';
             var log = function (s) { console.log(logTag + ": " + s); }
 
@@ -358,14 +428,20 @@
             var serviceApi = {};
 
             var bucket = { modalInstance: null };
-            serviceApi.open = function (title, message) {
+            serviceApi.open = function (title, message, okText, cancelText, onOk, onCancel) {
                 bucket.modalInstance = $uibModal.open({
                     templateUrl: '/static/habpanelex/tpl/modal.html?lucky=' + Math.random().toString().substring(2, 7),
                     backdrop: 'static',
                     controller: function ($scope, $uibModalInstance) {
-                        $scope.close = $uibModalInstance.close;
                         $scope.title = title;
                         $scope.message = message;
+                        if (typeof (okText) !== "boolean") {
+                            $scope.okText = okText || "OK";
+                            $scope.cancelText = cancelText;
+                            $scope.onOk = onOk || serviceApi.close;
+                            $scope.onCancel = onCancel;
+                        }
+
                     }
                 })
             };
@@ -380,14 +456,16 @@
     /*
         Main Settings Controller
     */
-    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService',
-        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService) {
+    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService', '$location',
+        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService, $location) {
             var logTag = 'HPExCtrl';
             $scope.header = "HPEx";
 
             $scope.availablePanelIds = HPExScrSaverService.getAvailablePanelIds();
-
+            $scope.activeTab = "General";
             $scope.instanceId = Math.random().toString(36).substring(2);
+            $scope.globalUuid = HPExService.globalUuid;
+            $scope.panelConfigItem = HPExService.panelConfigItem;
 
             $scope.isDrawer = function () {
                 var retVal = HPExUtils.hasParent('.hpex-main_' + $scope.instanceId, '.drawer');
@@ -403,12 +481,56 @@
                 else {
                     HPExModalService.open('Config', 'Failed');
                 }
-
             }
 
             $scope.cancelConfig = function () {
                 onInit();
                 HPExModalService.open('Config', 'Canceled');
+            }
+
+            $scope.setActiveTab = function (t) {
+                $scope.activeTab = t;
+            }
+
+            var onSaveNewConfig = function (statusCode) {
+                if (statusCode == 200) {
+                    HPExModalService.open("New Configuration", "Saved. Please manually refresh the page to reload configuration.", true);
+                } else {
+                    HPExModalService.open("New Configuration", "Failed. Please manually refresh the page to reload  configuration", true);
+                }
+            }
+
+            $scope.saveNewConfig = function (id) {
+                // Check if exists:
+                var r = HPExUtils.synchrounousRestCall("GET", id);
+                if (r.status == 200) {
+
+                    var onOk = function () {
+                        r = HPExService.saveConfig($scope.config, id);
+                        HPExModalService.close();
+                        onSaveNewConfig(r.status);
+                    }
+
+                    HPExModalService.open('Item Exists', "String item " + id + " exists. Override?", "Yes", "No", onOk, HPExModalService.close);
+
+                } else if (r.status == 404) {
+                    var onOk = function () {
+                        r = HPExUtils.createItem(id);
+                        if (r.status == 201) {
+                            r = HPExService.saveConfig($scope.config, id);
+                            HPExModalService.close();
+                            onSaveNewConfig(r.status);
+                        } else {
+                            HPExModalService.close();
+                            HPExModalService.open('New Item', "New Item Failed. Please check console logs");
+                        }
+                    }
+                    HPExModalService.open('New Item', "String item " + id + " does <strong>NOT</strong> exist. Override?", "Yes", "No", onOk, HPExModalService.close);
+                }
+            }
+
+            $scope.cancelNewConfig = function () {
+                $location.url('/');
             }
 
             var log = function (s) { console.log(logTag + ": " + s); }
@@ -427,59 +549,86 @@
         }
     ]);
 
-    app.service('HPExFSService', ['$rootScope', 'HPExService',
-        function ($rootScope, HPExService) {
-            var logTag = 'HPExFSService';
+    app.service('HPExTheaterService', ['$rootScope', 'HPExService', 'HPExUtils', 'OHService',
+        function ($rootScope, HPExService, HPExUtils, OHService) {
+            var logTag = 'HPExTheaterService';
             var serviceApi = {};
-            var config = {};
+            serviceApi.config = HPExService.getConfig();
+            serviceApi.config = serviceApi.config.theaterMode || { isEnabled: false };
 
             var onConfigChanged = function () {
-                config = HPExService.getConfig();
+                var config = HPExService.getConfig();
+                serviceApi.config = (config && config.theaterMode) || { isEnabled: false };
             };
 
             var log = function (s) { console.log(logTag + ": " + s); }
 
+            var commandON = function () {
+                serviceApi.config.triggeringItem && OHService.sendCmd(serviceApi.config.triggeringItem, "ON");
+            }
+
+            var commandOFF = function () {
+                serviceApi.config.triggeringItem && OHService.sendCmd(serviceApi.config.triggeringItem, "OFF");
+            }
+
             var onInit = function () {
-                config = HPExService.getConfig();
                 log("Init");
             };
 
             serviceApi.startTheaterMode = function () {
-                var el = document.getElementById('theaterModeMainEl');
-                el && (el.style.display = "block");
+                if (!serviceApi.config.isEnabled)
+                    return;
+                var el = document.getElementById('theaterModeMainEl_' + HPExService.globalUuid);
+                if (!el) {
+                    commandON();
+                    return;
+                }
+                if (el.style.display !== "block") {
+                    el.style.display = "block";
+                    document.querySelector('main').classList.add('hideMainHideDrawer_' + HPExService.globalUuid);
+                    commandON();
+                    log("ON");
+                }
             };
 
             serviceApi.stopTheaterMode = function () {
-                var el = document.getElementById('theaterModeMainEl');
-                el && (el.style.display = "none");
-            };
-
-            serviceApi.toggleTheaterMode = function () {
-                var el = document.getElementById('theaterModeMainEl');
-                var d = el && el.style.display;
-                if (d) {
-                    el.style.display = el.style.display == "none" ? "block" : "none";
+                if (!serviceApi.config.isEnabled)
+                    return;
+                var el = document.getElementById('theaterModeMainEl_' + HPExService.globalUuid);
+                if (!el) {
+                    commandOFF();
+                    return;
+                }
+                if (el.style.display !== "none") {
+                    el.style.display = "none";
+                    document.querySelector('main').classList.remove('hideMainHideDrawer_' + HPExService.globalUuid);
+                    commandOFF();
+                    log("OFF");
                 }
             };
 
             $rootScope.$on('HPExEvent.configChanged', onConfigChanged);
+            $rootScope.$on('openhab-update', function (event, item) {
+                if (!serviceApi.config.isEnabled)
+                    return;
+                if (serviceApi.config.triggeringItem
+                    && item
+                    && item.name == serviceApi.config.triggeringItem
+                    && item.type == "Switch") {
+
+                    if (item.state == "ON") {
+                        serviceApi.startTheaterMode();
+                        return;
+                    }
+                    if (item.state == "OFF") {
+                        serviceApi.stopTheaterMode();
+                        return;
+                    }
+                }
+            });
             onInit();
 
             return serviceApi;
-        }
-    ]);
-
-    app.controller('HPExTheaterCtrl', ['$scope', 'HPExFSService',
-        function ($scope, HPExFSService) {
-            $scope.on = function () {
-                HPExFSService.startTheaterMode();
-            };
-            $scope.off = function () {
-                HPExFSService.stopTheaterMode();
-            };
-            $scope.toggle = function () {
-                HPExFSService.toggleTheaterMode();
-            };
         }
     ]);
 

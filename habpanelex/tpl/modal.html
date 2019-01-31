@@ -6,6 +6,7 @@
         {{message}}
     </div>
     <div class="modal-footer ng-scope">
-        <button class="btn btn-primary" type="button" ng-click="close()">OK</button>
+        <button ng-if="okText" class="btn btn-primary" type="button" ng-click="onOk()">{{okText}}</button>
+        <button ng-if="cancelText" class="btn btn-warning" type="button" ng-click="onCancel()">{{cancelText}}</button>
     </div>
 </div>
