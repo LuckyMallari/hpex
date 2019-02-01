@@ -29,6 +29,9 @@
   .hpex-main_{{instanceId}} .mt-3 {
     margin-top: 3em;
   }  
+  .hpex-main_{{instanceId}} .ml-2 {
+    margin-left: 2em;
+  }   
   .hpex-main_{{instanceId}} textarea,
   .hpex-main_{{instanceId}} input[type='text'],
   .hpex-main_{{instanceId}} input[type='number'] {
@@ -107,7 +110,7 @@
 
     <!-- GENERAL -->
     <uib-tabset>
-      <uib-tab heading="General" select="setactiveTab('General')">
+      <uib-tab heading="General" select="setActiveTab('General')">
         <div class="checkbox">
           <label>
             <input type="checkbox" ng-model="config.isShowInDrawer" />
@@ -125,7 +128,7 @@
       </uib-tab>
 
       <!-- SCREEN -->
-      <uib-tab heading="Screen" select="setactiveTab('Screen.ScreenSaver')">
+      <uib-tab heading="Screen" select="setActiveTab('Screen.ScreenSaver')">
         <uib-tabset>
           <!-- SCREEN SAVER  -->
           <uib-tab heading="Screen Saver">
@@ -199,7 +202,7 @@
 
           <!-- THEATER MODE -->
           <uib-tab heading="Theater Mode" ng-init="config.theaterMode.color = config.theaterMode.color || 'rgba(0,0,0,0.90)'"
-            select="setactiveTab('Screen.TheaterMode')">
+            select="setActiveTab('Screen.TheaterMode')">
             <p class="italics">
               <span class="glyphicon glyphicon-info-sign"></span>&nbsp;Theater mode changes the screen brightness/color
             </p>
@@ -269,7 +272,17 @@
                 to know the configuration String Item name. The String Item name is saved onto your browser's
                 localStorage.
               </p>
-              <input class="form-control mt-2" type="text" placeholder="Type 'I understood' here to edit the string item above"
+              <div ng-if="isAccepted=='I understood'">
+                <div>
+                  <item-picker ng-model="panelConfigItem" filter-type="String"></item-picker>
+                </div>
+                <div>Load existing config. Select the String item above and hit Load. <button class="btn btn-danger" ng-click="loadExisting(panelConfigItem)">Load</button></div>                
+                <p>
+                  <span class="glyphicon glyphicon-info-sign"></span>&nbsp;After you load, you will still need to save
+                  the changes.
+                </p>
+              </div>
+              <input class="form-control mt-2" type="text" placeholder="Type 'I understood' here to edit the string item above or load a different one."
                 ng-model="isAccepted">
             </div>
           </div>
