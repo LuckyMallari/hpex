@@ -439,9 +439,8 @@
                             $scope.okText = okText || "OK";
                             $scope.cancelText = cancelText;
                             $scope.onOk = onOk || serviceApi.close;
-                            $scope.onCancel = onCancel;
+                            $scope.onCancel = onCancel || serviceApi.close;
                         }
-
                     }
                 })
             };
@@ -456,8 +455,8 @@
     /*
         Main Settings Controller
     */
-    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService', '$location',
-        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService, $location) {
+    app.controller('HPExCtrl', ['$scope', 'HPExService', 'HPExUtils', '$rootScope', 'HPExScrSaverService', 'HPExModalService', '$location', 'OHService',
+        function ($scope, HPExService, HPExUtils, $rootScope, HPExScrSaverService, HPExModalService, $location, OHService) {
             var logTag = 'HPExCtrl';
             $scope.header = "HPEx";
 
@@ -531,6 +530,43 @@
 
             $scope.cancelNewConfig = function () {
                 $location.url('/');
+            }
+
+            $scope.loadExisting = function (panelConfigId) {
+
+                var onYes = function (j, panelConfigId) {
+                    $scope.config = j;
+                    $scope.panelConfigItem = panelConfigId;
+                    var r = HPExService.saveConfig($scope.config, panelConfigId);
+                    HPExModalService.close();
+                    onSaveNewConfig(r.status);
+                }
+
+                var r = OHService.getItem(panelConfigId);
+                if (r && r.state) {
+                    var j = null;
+                    try {
+                        j = JSON.parse(r.state)
+                    } catch (e) {
+                        console.error(logTag + " Unable to parse config: " + panelConfigId);
+                    }
+                    if (!j.initComplete || !j.panelConfigItem) {
+                        var l = " Not a valid config: " + panelConfigId
+                        console.error(logTag + l);
+                        HPExModalService.open('Config Load', l);
+                        return;
+                    }
+
+                    HPExModalService.open('Config Load',
+                        "<h4>Config from " + panelConfigId + "</h4>" + "<pre>" + JSON.stringify(j, null, 4) + "</pre>",
+                        "Yes, I want to load this.",
+                        "No, I made a mistake!",
+                        function() { onYes(j, panelConfigId) }
+                    );
+                    return;
+                }
+
+                HPExModalService.open('Config Load', 'Unable to retrieve Item. Make sure String Item "' + panelConfigId + '" exists?');
             }
 
             var log = function (s) { console.log(logTag + ": " + s); }
