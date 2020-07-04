@@ -47,7 +47,8 @@
             "timeoutSeconds": 120,
             "dashboardList": "",
             "durationSeconds": 10,
-            "isFullScreen": true
+            "isFullScreen": true,
+            "homeScreen": ""
         },
         "theaterMode": {
             "isEnabled": true,
@@ -267,6 +268,7 @@
             }
             var config = {};
             var currentIndex = 0;
+            var ssActive = false;
 
             serviceApi.getAvailablePanelIds = function () {
                 return extractIds(PersistenceService.getDashboards()).join(', ');
@@ -279,6 +281,7 @@
 
             var idleHit = function () {
                 var interval = config.durationSeconds || 10;
+                ssActive = true;
                 next();
                 timers.screenSaverTimer = $interval(next, interval * 1000);
             }
@@ -304,7 +307,11 @@
             };
 
             var stopIdleTimer = function () {
-                if (config.isFullScreen) {
+                if (ssActive && config.homeScreen !== "") {
+                    HPExService.goToDashboard(config.homeScreen);
+                    ssActive = false;
+                }
+                else if(config.isFullScreen) {
                     document.querySelector('main').classList.remove('hideMainHideDrawer_' + HPExService.globalUuid);
                 };
                 $timeout.cancel(timers.idleTimer);

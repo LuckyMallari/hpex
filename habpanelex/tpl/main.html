@@ -180,12 +180,24 @@
                   ng-model="config.screensaver.dashboardList"></input>
                 <div>
                   <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Comma (,) separated list of
-                    dashboards to rotate. (hint: you can put only 1 dashoard id). If
+                    dashboards to rotate. (hint: you can put only 1 dashboard id). If
                     this is
                     empty,
                     this will rotate <strong>ALL</strong> the dashboards. You can order it however you want, and even
                     put
                     duplicates if you desire.</p>
+                </div>
+              </div>
+            </div>
+            <div class="mt-1">
+              <label for="ss_homeScreenId">Home Screen: </label>
+              <div>
+                <input ng-disabled="!config.screensaver.isEnabled" class="form-control" type='text' id="ss_homescreen"
+                  ng-model="config.screensaver.homeScreen"></input>
+                <div>
+                  <p class="mt-1"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Dashboard id to use as a homescreen.
+                  This dashboard will be shown when the screensaver is dismissed.
+                  If left blank the current dashboard will remain.</p>
                 </div>
               </div>
             </div>
